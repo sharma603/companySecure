@@ -37,7 +37,7 @@ class RedirectIfAuthenticated
         ]);
         
         // CRITICAL FIX: Never redirect when already on dashboard
-        if ($currentPath === 'dashboard' || $request->is('dashboard') || $request->route() && $request->route()->getName() === 'dashboard') {
+        if ($currentPath === 'dashboard' || $request->is('dashboard') || ($request->route() && $request->route()->getName() === 'dashboard')) {
             return $next($request);
         }
         
@@ -50,6 +50,7 @@ class RedirectIfAuthenticated
         if ($isPublicRoute) {
             foreach ($guards as $guard) {
                 if (Auth::guard($guard)->check()) {
+                    Auth::shouldUse($guard);
                     Log::debug('Authenticated user trying to access public route - redirecting to dashboard', [
                         'guard' => $guard,
                         'from_path' => $currentPath

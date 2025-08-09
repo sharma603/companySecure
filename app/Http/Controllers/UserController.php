@@ -13,8 +13,21 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('roles')->get();
-        return view('users.index', compact('users'));
+        // Admins see all users; others see only sub-users (role: user)
+        $query = User::with('roles');
+        $currentUser = auth()->user();
+        $isAdmin = $currentUser && method_exists($currentUser, 'roles')
+            ? $currentUser->roles->contains('name', 'admin')
+            : false;
+
+        if (!$isAdmin) {
+            $query->whereHas('roles', function ($q) {
+                $q->where('name', 'user');
+            });
+        }
+
+        $users = $query->orderByDesc('created_at')->paginate(15);
+        return view('users.index', compact('users', 'isAdmin'));
     }
 
     public function create()

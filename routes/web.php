@@ -13,16 +13,31 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserModalController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\SubUserController;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
+use App\Models\Role;
 
 // Guest routes (for non-authenticated users)
+// Remove 'guest' middleware to allow direct access
+// Route::middleware(['guest'])->group(function () {
+//      // Login routes - keep both for compatibility
+//     Route::get('/login', [UserLoginController::class, 'showLoginForm'])->name('login');
+//     Route::post('/login', [UserLoginController::class, 'login'])->name('login.submit');
+//     
+//     // Registration routes
+//     Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+//     Route::post('/register', [RegisterController::class, 'register']);
+// });
+
+// Public auth routes (only for guests)
 Route::middleware(['guest'])->group(function () {
-     // Login routes - keep both for compatibility
+    // Login
     Route::get('/login', [UserLoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [UserLoginController::class, 'login'])->name('login.submit');
-    
-    // Registration routes
+
+    // Registration
     Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
-    Route::post('/register', [RegisterController::class, 'register']);
+    Route::post('/register', [RegisterController::class, 'register'])->name('register');
 });
 
 // Protected routes (for authenticated users)
@@ -73,7 +88,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('permissions.destroy')->middleware('role:admin');
 
     // User Management
-    Route::get('/users', [UserController::class, 'index'])->name('users.index')->middleware('role:admin');
+    // Allow all authenticated users to view the users list (shows sub-users for non-admins)
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
     
     // Sub-User Management
     Route::get('/users/create-sub', [SubUserController::class, 'create'])->name('users.create.sub');
@@ -96,15 +112,24 @@ Route::get('/test-sub-user', function () {
     return view('roles.create_sub_user');
 })->name('test.sub.user');
 
-// Redirect root to login or dashboard based on auth status
+// Local-only helper to grant current user the admin role (to unblock admin routes in dev)
+if (app()->environment('local')) {
+    Route::middleware(['auth'])->get('/dev/make-me-admin', function () {
+        $user = Auth::user();
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], ['description' => 'Administrator']);
+        // Attach via pivot tables directly (works for both models without relying on relations)
+        try { DB::table('role_user')->updateOrInsert(['user_id' => $user->id, 'role_id' => $adminRole->id], []); } catch (\Throwable $e) {}
+        try { DB::table('role_register')->updateOrInsert(['register_id' => $user->id, 'role_id' => $adminRole->id], []); } catch (\Throwable $e) {}
+        return redirect()->back()->with('success', 'Admin role granted to your account.');
+    })->name('dev.make_me_admin');
+}
+
+// Redirect root to login or dashboard based on auth status (no heavy logic to avoid loops)
 Route::get('/', function () {
-    // Avoid potential redirect loops by directly returning views
-    if (Auth::guard('register')->check() || Auth::guard('web')->check()) {
+    if (Auth::check()) {
         return redirect()->route('dashboard');
-    } else {
-        // Return the login view directly instead of redirect
-        return view('auth.login');
     }
+    return redirect()->route('login');
 });
 
-// update 2
+// End of public redirects

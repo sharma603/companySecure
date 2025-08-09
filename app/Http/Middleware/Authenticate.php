@@ -14,21 +14,9 @@ class Authenticate extends Middleware
      */
     protected function redirectTo(Request $request): ?string
     {
-        // Don't redirect AJAX requests
         if ($request->expectsJson() || $request->ajax()) {
             return null;
         }
-        
-        // FIXED: Add debug logging to track redirect problems
-        $currentPath = $request->path();
-        Log::debug('Authenticate redirecting unauthenticated user', [
-            'from' => $request->fullUrl(),
-            'path' => $currentPath,
-            'method' => $request->method(),
-            'session_id' => $request->session()->getId()
-        ]);
-        
-        // Always use route() instead of hardcoded paths
         return route('login');
     }
     
@@ -52,6 +40,9 @@ class Authenticate extends Middleware
         // Check if the user is already authenticated with any guard
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
+                // Ensure the resolved default guard matches the authenticated one
+                // so Auth::user() works consistently in controllers/views.
+                Auth::shouldUse($guard);
                 Log::debug('User is authenticated with guard: ' . $guard, [
                     'path' => $request->path(),
                     'session_id' => $request->session()->getId()

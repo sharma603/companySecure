@@ -169,11 +169,13 @@
                     <i class="fas fa-sign-in-alt me-2"></i> Sign In
                 </button>
 
+                @if (Route::has('register'))
                 <div class="mt-3 text-center">
                     <a href="{{ route('register') }}" class="text-light">
                         <i class="fas fa-user-plus me-1"></i> New user? Register here
                     </a>
                 </div>
+                @endif
             </form>
         </div>
     </div>

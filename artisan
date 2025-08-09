@@ -32,9 +32,23 @@ $app = require_once __DIR__.'/bootstrap/app.php';
 
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 
+// Disable ANSI decoration (colors/spinners) for `serve` on Windows to avoid noisy output
+$argvList = $_SERVER['argv'] ?? [];
+$isServeCommand = isset($argvList[1]) && $argvList[1] === 'serve';
+$isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+
+// Respect NO_COLOR if already set, otherwise disable decoration for Windows + serve
+$noColorEnv = getenv('NO_COLOR');
+$disableDecoration = ($noColorEnv !== false) || ($isWindows && $isServeCommand);
+
+// Create output with decoration disabled when requested
+$consoleOutput = $disableDecoration
+    ? new Symfony\Component\Console\Output\ConsoleOutput(\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_NORMAL, false)
+    : new Symfony\Component\Console\Output\ConsoleOutput();
+
 $status = $kernel->handle(
     $input = new Symfony\Component\Console\Input\ArgvInput,
-    new Symfony\Component\Console\Output\ConsoleOutput
+    $consoleOutput
 );
 
 /*

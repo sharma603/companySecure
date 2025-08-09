@@ -54,6 +54,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Role::class);
     }
 
+    public function directPermissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'permission_user');
+    }
+
     /**
      * The companies that belong to the user.
      */
