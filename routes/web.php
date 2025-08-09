@@ -105,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->middleware('role:admin');
     Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('role:admin');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('role:admin');
+    Route::post('/users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('users.permissions.update')->middleware('role:admin');
 });
 
 // Test route - should show the same view without controller
@@ -131,5 +132,7 @@ Route::get('/', function () {
     }
     return redirect()->route('login');
 });
+
+// update user permissions
 
 // End of public redirects

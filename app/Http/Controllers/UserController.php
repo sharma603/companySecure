@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Permission;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +29,8 @@ class UserController extends Controller
         }
 
         $users = $query->orderByDesc('created_at')->paginate(15);
-        return view('users.index', compact('users', 'isAdmin'));
+        $allPermissions = Permission::orderBy('name')->get();
+        return view('users.index', compact('users', 'isAdmin', 'allPermissions'));
     }
 
     public function create()
@@ -150,5 +153,32 @@ class UserController extends Controller
             Log::error('User deletion failed: ' . $e->getMessage());
             return back()->with('error', 'Failed to delete user. ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Update direct permissions for a user (AJAX).
+     */
+    public function updatePermissions(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'permission_ids' => 'array',
+            'permission_ids.*' => 'integer|exists:permissions,id',
+        ]);
+
+        if (!Schema::hasTable('permission_user')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'permission_user table missing. Run: php artisan migrate',
+            ], 422);
+        }
+
+        $ids = $data['permission_ids'] ?? [];
+        // Sync direct permissions only
+        $user->directPermissions()->sync($ids);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Permissions updated',
+        ]);
     }
 } 
